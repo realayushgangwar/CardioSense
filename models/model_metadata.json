@@ -1,0 +1,31 @@
+{
+  "best_model": "Logistic Regression",
+  "default_threshold": 0.5,
+  "tuned_threshold": 0.41,
+  "numeric_features": [
+    "age",
+    "cigsPerDay",
+    "totChol",
+    "sysBP",
+    "diaBP",
+    "BMI",
+    "heartRate",
+    "glucose"
+  ],
+  "categorical_features": [
+    "male",
+    "education",
+    "currentSmoker",
+    "BPMeds",
+    "prevalentStroke",
+    "prevalentHyp",
+    "diabetes"
+  ],
+  "test_metrics_at_tuned_threshold": {
+    "recall": 0.7442,
+    "precision": 0.2152,
+    "f1": 0.3339,
+    "roc_auc": 0.6985,
+    "pr_auc": 0.2784
+  }
+}
