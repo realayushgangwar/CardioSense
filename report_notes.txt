@@ -1,0 +1,159 @@
+CardioSense — Verified Project Report Notes
+============================================
+All values below are extracted directly from notebooks (01_eda.ipynb, 02_modeling.ipynb,
+03_explainability.ipynb), source files (src/train.py, src/explain.py, src/recommend.py),
+saved artifacts (models/best_model.pkl, models/model_metadata.json), and reports/.
+
+
+1. DATASET (data/framingham.csv)
+--------------------------------
+- Rows: 4,238
+- Columns: 16 (15 predictor features + 1 target column: TenYearCHD)
+- Features (15):
+  * Numeric (8): age, cigsPerDay, totChol, sysBP, diaBP, BMI, heartRate, glucose
+  * Binary / Categorical (7): male, education, currentSmoker, BPMeds, prevalentStroke, prevalentHyp, diabetes
+- Target (TenYearCHD) class split:
+  * No CHD (0):      3,594 rows (84.8%)
+  * 10-Year CHD (1):   644 rows (15.2%)
+  * Class imbalance ratio (0 : 1): 5.58 : 1
+- Missing values (645 missing cells total across 582 rows / 13.73% of rows; 7 columns affected):
+  * glucose:    388 (9.16%)
+  * education:  105 (2.48%)
+  * BPMeds:      53 (1.25%)
+  * totChol:     50 (1.18%)
+  * cigsPerDay:  29 (0.68%)
+  * BMI:         19 (0.45%)
+  * heartRate:    1 (0.02%)
+  (Remaining 9 columns have 0 missing values.)
+- Duplicates: 0 exact duplicate rows; 0 duplicate feature vectors (excl. target).
+
+
+2. TRAIN / TEST SPLIT & RANDOM SEED
+-----------------------------------
+- Split strategy: Stratified 80/20 split (test_size=0.20, stratify=y)
+- Random seed (RANDOM_STATE): 42
+- Train set (80%): 3,390 rows (CHD=0: 2,875 | CHD=1: 515 | CHD Rate: 15.19%)
+- Test set (20%):    848 rows (CHD=0:   719 | CHD=1: 129 | CHD Rate: 15.21%)
+
+
+3. CROSS-VALIDATION COMPARISON (5-FOLD STRATIFIED CV) & BEST HYPERPARAMETERS
+--------------------------------------------------------------------------
+Model                 | CV ROC-AUC | CV PR-AUC | CV Recall | CV F1
+----------------------|------------|-----------|-----------|-------
+Logistic Regression   |     0.7328 |    0.3652 |    0.6796 | 0.3844
+Random Forest         |     0.7178 |    0.3352 |    0.6214 | 0.3868
+XGBoost               |     0.7163 |    0.3307 |    0.5087 | 0.3742
+
+Best Hyperparameters:
+- Logistic Regression (verified from models/best_model.pkl + 02_modeling.ipynb):
+  * smote__k_neighbors = 3 (with random_state=42, sampling_strategy='auto')
+  * classifier__l1_ratio = 0.0
+  * classifier__C = 0.006158482110660267
+  * (fixed settings: solver='saga', max_iter=3000, random_state=42)
+- Random Forest:
+  * Full dictionary NOT FOUND (truncated in 02_modeling.ipynb Cell 9 output;
+    visible prefix: {'smote__k_neighbors': 3, 'n_estimators': 400, ...)
+- XGBoost:
+  * Full dictionary NOT FOUND (truncated in 02_modeling.ipynb Cell 9 output;
+    visible prefix: {'smote__k_neighbors': 5, 'subsample': 0.7, 'r...)
+
+
+4. FINAL MODEL & HELD-OUT TEST-SET RESULTS
+------------------------------------------
+- Final model name: Logistic Regression (saved to models/best_model.pkl)
+
+Test-set results at default threshold (t = 0.50) [from reports/model_comparison.csv & reports/confusion_matrices.png]:
+- Recall:    0.6047 (60.47%)
+- Precision: 0.2476 (24.76%)
+- F1-Score:  0.3514
+- ROC-AUC:   0.6985
+- PR-AUC:    0.2784
+- Confusion Matrix (t = 0.50, total = 848):
+  * True Negatives  (TN): 482
+  * False Positives (FP): 237
+  * False Negatives (FN):  51
+  * True Positives  (TP):  78
+
+Test-set results at tuned threshold (t = 0.41) [from models/model_metadata.json & reports/threshold_confusion_comparison.png]:
+- Recall:    0.7442 (74.42%)
+- Precision: 0.2152 (21.52%)
+- F1-Score:  0.3339
+- ROC-AUC:   0.6985
+- PR-AUC:    0.2784
+- Confusion Matrix (t = 0.41, total = 848):
+  * True Negatives  (TN): 369
+  * False Positives (FP): 350
+  * False Negatives (FN):  33
+  * True Positives  (TP):  96
+
+
+5. CHOSEN DECISION THRESHOLD
+----------------------------
+- Chosen decision threshold: 0.41 (default_threshold = 0.50)
+- Recall at threshold 0.41:    0.7442 (74.42%)
+- Precision at threshold 0.41: 0.2152 (21.52%)
+
+
+6. TOP 10 FEATURES BY MEAN ABSOLUTE SHAP VALUE (TEST SET)
+---------------------------------------------------------
+(From notebooks/03_explainability.ipynb Cell 4, using shap.LinearExplainer)
+ 1. Age (years) [age]                          : 0.4830
+ 2. Cigarettes / Day [cigsPerDay]              : 0.2263
+ 3. Systolic BP (mmHg) [sysBP]                 : 0.1868
+ 4. Sex (Male = 1) [male]                      : 0.1311
+ 5. Total Cholesterol (mg/dL) [totChol]        : 0.0815
+ 6. Prevalent Hypertension (1 = Yes) [prevalentHyp] : 0.0711
+ 7. Glucose (mg/dL) [glucose]                  : 0.0625
+ 8. Diastolic BP (mmHg) [diaBP]                : 0.0478
+ 9. Education Level (1-4) [education]          : 0.0324
+10. Heart Rate (bpm) [heartRate]               : 0.0134
+
+
+7. RISK CUTOFFS IN src/recommend.py
+-----------------------------------
+Probability tier cutoffs:
+- LOW_RISK_MAX      = 0.10   -> Low risk:      probability < 0.10 (< 10%)
+- MODERATE_RISK_MAX = 0.25   -> Moderate risk: 0.10 <= probability <= 0.25 (10% to 25%)
+                             -> High risk:     probability > 0.25 (> 25%)
+
+Clinical guideline thresholds in src/recommend.py:
+- SMOKING_CIGS_THRESHOLD     = 1.0
+- SYS_BP_ELEVATED_THRESHOLD  = 130.0
+- SYS_BP_STAGE2_THRESHOLD    = 140.0
+- DIA_BP_ELEVATED_THRESHOLD  = 80.0
+- DIA_BP_STAGE2_THRESHOLD    = 90.0
+- CHOL_BORDERLINE_THRESHOLD  = 200.0
+- CHOL_HIGH_THRESHOLD        = 240.0
+- BMI_OVERWEIGHT_THRESHOLD   = 25.0
+- BMI_OBESE_THRESHOLD        = 30.0
+- GLUCOSE_IMPAIRED_THRESHOLD = 100.0
+- GLUCOSE_DIABETIC_THRESHOLD = 126.0
+
+
+8. FILES IN reports/ AND reports/screenshots/
+---------------------------------------------
+reports/ (15 files):
+- confusion_matrices.png
+- eda_boxplots_outliers.png
+- eda_correlation_heatmap.png
+- eda_missing_values.png
+- eda_numeric_distributions_by_target.png
+- eda_target_distribution.png
+- lime_local_explanations.png
+- model_comparison.csv
+- roc_curves_comparison.png
+- shap_feature_importance_bar.png
+- shap_summary_beeswarm.png
+- shap_waterfall_high_risk.png
+- shap_waterfall_low_risk.png
+- threshold_confusion_comparison.png
+- threshold_tuning.png
+
+reports/screenshots/ (6 files):
+- Screenshot 2026-11-27 224349.png
+- Screenshot 2026-11-27 224356.png
+- Screenshot 2026-11-27 224403.png
+- Screenshot 2026-11-27 224722.png
+- Screenshot 2026-11-27 224730.png
+- Screenshot 2026-11-27 224910.png
+
