@@ -1,0 +1,29 @@
+# CardioSense — Python dependencies
+# Install with: pip install -r requirements.txt
+# Tested on Python 3.13 / Windows 11
+
+# ── Core data science ─────────────────────────────────────────────────────────
+pandas==3.1.1
+numpy==2.5.5
+scikit-learn==1.9.1
+imbalanced-learn==0.14.2
+xgboost==3.4.1
+joblib==1.6.0
+
+# ── Visualisation ─────────────────────────────────────────────────────────────
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# ── Explainability ────────────────────────────────────────────────────────────
+shap==0.54.1
+lime
+
+# ── Streamlit dashboard ───────────────────────────────────────────────────────
+streamlit==1.67.0
+
+# ── Notebook execution (EDA + modelling notebooks) ────────────────────────────
+nbformat
+ipython
+ipykernel
+jupyter
+
